@@ -1,1 +1,1 @@
-# weigth
+# weight
