@@ -363,7 +363,7 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
   <div class="sheet-in">
     <div class="grab"></div>
     <h2 id="stTitle">צעדים מהאייפון</h2>
-    <p class="help">קיצור הדרך באייפון מעתיק ללוח שורות של תאריך וצעדים. אפשר להדביק כאן ידנית, למשל 2026-11-14 8400.</p>
+    <p class="help">קיצור הדרך באייפון מעתיק ללוח שורות של תאריך וצעדים. אפשר להדביק כאן ידנית, למשל 2026-11-14 8400. מספר בודד נשמר כצעדים של היום.</p>
     <textarea id="stText" class="code" placeholder="2026-11-14 8400&#10;2026-11-13 10250" style="inline-size:100%;border:0;border-radius:14px;background:var(--surface-2);color:var(--ink);padding:12px"></textarea>
     <p class="msg" id="stStatus" aria-live="polite" style="text-align:start"></p>
     <div class="grid2"><button class="btn soft" data-close>סגירה</button><button class="btn" id="stGo" disabled>לשמור צעדים</button></div>
@@ -724,6 +724,8 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
   /* steps from iPhone (Shortcuts) */
   function parseSteps(text){
     var map = {}, n = 0, bad = 0, today = new Date();
+    var bare = String(text || "").trim().match(/^\d[\d,]*(?:\.\d+)?$/);
+    if (bare){ var bv = Math.round(parseFloat(bare[0].replace(/,/g, ""))); if (bv >= 0 && bv <= 100000){ map[iso(today)] = bv; return { map: map, n: 1, bad: 0 }; } }
     String(text || "").split(/\r?\n/).forEach(function(line){
       line = line.trim(); if (!line) return;
       var m = line.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/), y, mo, da;
