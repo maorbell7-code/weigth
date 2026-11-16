@@ -238,6 +238,7 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
       <button class="btn grow" data-open-entry>לשקול עכשיו</button>
       <button class="btn soft" id="openSummary">סיכום שבועי</button>
     </div>
+    <button class="btn soft small" id="syncSteps" style="inline-size:100%;margin-block:-8px 18px">סנכרון צעדים מהאייפון</button>
     <div class="tiles" id="tiles"></div>
     <div class="row-between"><h2 style="margin:0 0 10px;font-size:18px">תובנות</h2><a href="#reports" style="color:var(--violet);font-weight:600;font-size:14px;text-decoration:none">לכל הדוחות</a></div>
     <ul class="ins" id="insHome"></ul>
@@ -322,11 +323,10 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     </div>
     <div class="unit">ק״ג</div>
     <details class="more" id="more">
-      <summary>+ מותניים, שינה, צעדים והערה</summary>
-      <div class="grid3">
+      <summary>+ מותניים, שינה והערה</summary>
+      <div class="grid2">
         <div class="f"><label for="waist">מותניים (ס״מ)</label><input id="waist" type="number" inputmode="decimal" step="0.5" min="40" max="200"></div>
         <div class="f"><label for="sleep">שינה (שעות)</label><input id="sleep" type="number" inputmode="decimal" step="0.25" min="0" max="16"></div>
-        <div class="f"><label for="steps">צעדים</label><input id="steps" type="number" inputmode="numeric" step="1" min="0" max="100000"></div>
       </div>
       <div class="f" style="margin-block-start:10px"><label for="note">הערה</label><input id="note" type="text" maxlength="120" placeholder="אירוע, אימון, ארוחה מאוחרת…"></div>
     </details>
@@ -359,6 +359,17 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
   </div>
 </dialog>
 
+<dialog class="sheet" id="stepsDlg" aria-labelledby="stTitle">
+  <div class="sheet-in">
+    <div class="grab"></div>
+    <h2 id="stTitle">צעדים מהאייפון</h2>
+    <p class="help">קיצור הדרך באייפון מעתיק ללוח שורות של תאריך וצעדים. אפשר להדביק כאן ידנית, למשל 2026-11-14 8400.</p>
+    <textarea id="stText" class="code" placeholder="2026-11-14 8400&#10;2026-11-13 10250" style="inline-size:100%;border:0;border-radius:14px;background:var(--surface-2);color:var(--ink);padding:12px"></textarea>
+    <p class="msg" id="stStatus" aria-live="polite" style="text-align:start"></p>
+    <div class="grid2"><button class="btn soft" data-close>סגירה</button><button class="btn" id="stGo" disabled>לשמור צעדים</button></div>
+  </div>
+</dialog>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -366,8 +377,8 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
   "use strict";
   var KEY = "weight-tracker-v2", OLD_KEY = "kh-weight-v1";
   var VIEWS = ["home","trends","reports","log","goals"];
-  var state = { entries:{}, target:null, height:null, sleepGoal:null };
-  var ref = null, saving = false, pending = false, chart = null, range = 30, metric = "w", importRows = [];
+  var state = { entries:{}, target:null, height:null, sleepGoal:null, dailySteps:{} };
+  var ref = null, saving = false, pending = false, chart = null, range = 30, metric = "w", importRows = [], importSteps = [];
   var $ = function(id){ return document.getElementById(id); };
 
   var f1 = new Intl.NumberFormat("he-IL",{minimumFractionDigits:1,maximumFractionDigits:1});
@@ -419,15 +430,19 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     return e;
   }
   function normalize(o){
-    var out = { entries:{}, target:null, height:null, sleepGoal:null };
+    var out = { entries:{}, target:null, height:null, sleepGoal:null, dailySteps:{} };
     if (o && typeof o === "object"){
       var e = o.entries || {};
       Object.keys(e).forEach(function(k){ if (/^\d{4}-\d{2}-\d{2}$/.test(k)){ var n = normEntry(e[k]); if (n) out.entries[k] = n; } });
+      var ds = o.dailySteps || {};
+      Object.keys(ds).forEach(function(k){ if (/^\d{4}-\d{2}-\d{2}$/.test(k)){ var v = num(ds[k], 0, 100000); if (v != null) out.dailySteps[k] = Math.round(v); } });
       out.target = num(o.target, 20, 350); out.height = num(o.height, 100, 250); out.sleepGoal = num(o.sleepGoal, 4, 12);
     }
     return out;
   }
-  function list(){ return Object.keys(state.entries).sort().map(function(k){ var e = state.entries[k]; return { date:k, d:parse(k), w:e.w, waist:e.waist, sleep:e.sleep, steps:e.steps, note:e.note }; }); }
+  function stepsMap(){ var m = {}; Object.keys(state.entries).forEach(function(k){ if (state.entries[k].steps != null) m[k] = state.entries[k].steps; }); Object.keys(state.dailySteps).forEach(function(k){ m[k] = state.dailySteps[k]; }); return m; }
+  function stepList(){ var m = stepsMap(); return Object.keys(m).sort().map(function(k){ return { date:k, d:parse(k), steps:m[k] }; }); }
+  function list(){ var sm = stepsMap(); return Object.keys(state.entries).sort().map(function(k){ var e = state.entries[k]; return { date:k, d:parse(k), w:e.w, waist:e.waist, sleep:e.sleep, steps:sm[k], note:e.note }; }); }
   function within(arr, from, to){ return arr.filter(function(e){ return e.d >= from && e.d <= to; }); }
   function pick(arr, f){ return arr.map(function(e){ return e[f]; }).filter(function(v){ return v != null; }); }
   function goalDir(arr){ if (state.target == null || !arr.length) return 0; var s = arr[0].w; return state.target < s ? -1 : (state.target > s ? 1 : 0); }
@@ -465,6 +480,7 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
             if (first){
               var added = false;
               Object.keys(state.entries).forEach(function(k){ if (!(k in remote.entries)){ remote.entries[k] = state.entries[k]; added = true; } });
+              Object.keys(state.dailySteps).forEach(function(k){ if (!(k in remote.dailySteps)){ remote.dailySteps[k] = state.dailySteps[k]; added = true; } });
               ["target","height","sleepGoal"].forEach(function(f){ if (remote[f] == null && state[f] != null){ remote[f] = state[f]; added = true; } });
               state = remote; if (added) persist();
             } else state = remote;
@@ -483,11 +499,11 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
   function weeks(arr){
     var map = {};
     arr.forEach(function(e){ var k = iso(weekStart(e.d)); (map[k] = map[k] || []).push(e); });
-    var keys = Object.keys(map).sort();
+    var keys = Object.keys(map).sort(), sl = stepList();
     return keys.map(function(k,i){
       var es = map[k], ws = pick(es,"w"), a = avg(ws), prev = i ? avg(pick(map[keys[i-1]],"w")) : null;
       return { start:parse(k), avg:a, min:Math.min.apply(null,ws), max:Math.max.apply(null,ws), n:ws.length,
-        sleep:avg(pick(es,"sleep")), steps:avg(pick(es,"steps")),
+        sleep:avg(pick(es,"sleep")), steps:avg(pick(within(sl, parse(k), addDays(parse(k),6)),"steps")),
         delta: prev == null ? null : a - prev, ratio: prev == null ? null : (a - prev) / prev * 100 };
     });
   }
@@ -630,8 +646,10 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     var arr = all;
     if (range && all.length){ var last = all[all.length-1].d; arr = within(all, addDays(last, -(range-1)), last); }
     var pts = metric === "w" ? arr : arr.filter(function(e){ return e[metric] != null; });
+    if (metric === "steps"){ var sl = stepList(); pts = sl; if (range && sl.length){ var ls = sl[sl.length-1].d; pts = within(sl, addDays(ls, -(range-1)), ls); } }
     var empty = pts.length < (metric === "w" ? 2 : 1);
     $("chartEmpty").textContent = metric === "w" ? "הגרף יופיע אחרי שתי שקילות." : "אין עדיין נתוני " + m.label + " בטווח הזה. אפשר להוסיף אותם בשקילה, תחת מדדים נוספים.";
+    if (metric === "steps") $("chartEmpty").textContent = "עוד אין צעדים. הם מגיעים מהאייפון, דרך הכפתור סנכרון צעדים בדף הבית.";
     $("chartEmpty").hidden = !empty; $("chart").hidden = empty;
     if (chart){ chart.destroy(); chart = null; }
     if (empty || !window.Chart) return;
@@ -703,8 +721,56 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     return out;
   }
 
+  /* steps from iPhone (Shortcuts) */
+  function parseSteps(text){
+    var map = {}, n = 0, bad = 0, today = new Date();
+    String(text || "").split(/\r?\n/).forEach(function(line){
+      line = line.trim(); if (!line) return;
+      var m = line.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/), y, mo, da;
+      if (m){ y = +m[1]; mo = +m[2]; da = +m[3]; }
+      else { m = line.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/); if (!m){ bad++; return; } da = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+      var rest = line.replace(m[0], " ").match(/\d[\d,]*(?:\.\d+)?/);
+      var v = rest ? Math.round(parseFloat(rest[0].replace(/,/g, ""))) : NaN, dt = new Date(y, mo-1, da);
+      if (!(v >= 0 && v <= 100000) || dt.getMonth() !== mo-1 || dt.getDate() !== da || dt > today){ bad++; return; }
+      map[iso(dt)] = v; n++;
+    });
+    return { map: map, n: n, bad: bad };
+  }
+  function applySteps(map){
+    var keys = Object.keys(map); if (!keys.length) return 0;
+    keys.forEach(function(k){ state.dailySteps[k] = map[k]; });
+    persist(); render(); return keys.length;
+  }
+  function stepsToast(map){
+    var ks = Object.keys(map).sort(), last = ks[ks.length-1];
+    toast(ks.length === 1 ? "הצעדים עודכנו: " + n0.format(map[last]) : "עודכנו צעדים ל־" + ks.length + " ימים");
+  }
+  function previewSteps(){
+    var r = parseSteps($("stText").value);
+    $("stStatus").textContent = r.n ? "נמצאו " + r.n + " ימים עם צעדים." + (r.bad ? " " + r.bad + " שורות ידולגו." : "") : ($("stText").value.trim() ? "לא זוהו שורות עם תאריך וצעדים." : "");
+    $("stGo").disabled = !r.n; return r;
+  }
+  function openSteps(){ $("stText").value = ""; previewSteps(); openDlg($("stepsDlg")); }
+  $("stText").addEventListener("input", previewSteps);
+  $("stGo").addEventListener("click", function(){ var r = previewSteps(); if (r.n){ applySteps(r.map); $("stepsDlg").close(); stepsToast(r.map); } });
+  $("syncSteps").addEventListener("click", function(){
+    if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(function(t){
+      var r = parseSteps(t);
+      if (r.n){ applySteps(r.map); stepsToast(r.map); } else openSteps();
+    }, openSteps); else openSteps();
+  });
+  function stepsFromHash(){
+    var raw = location.hash || ""; if (!/^#steps/.test(raw)) return;
+    var q = new URLSearchParams(raw.replace(/^#steps\??/, "")), text = [];
+    if (q.get("n") != null) text.push((q.get("d") || iso(new Date())) + " " + q.get("n"));
+    (q.get("days") || "").split(",").forEach(function(x){ var p = x.split(":"); if (p.length === 2) text.push(p[0] + " " + p[1]); });
+    var r = parseSteps(text.join("\n")); if (r.n){ applySteps(r.map); stepsToast(r.map); }
+    history.replaceState(null, "", location.pathname + location.search + "#home");
+  }
+
   /* routing */
   function route(){
+    stepsFromHash();
     var v = (location.hash || "").replace("#",""); if (VIEWS.indexOf(v) < 0) v = "home";
     VIEWS.forEach(function(n){ $("v-" + n).classList.toggle("on", n === v); });
     document.querySelectorAll(".nav a").forEach(function(a){ if (a.dataset.view === v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -723,8 +789,8 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     $("d").value = k || iso(new Date());
     $("w").value = e ? e.w : (arr.length ? arr[arr.length-1].w : "");
     $("waist").value = e && e.waist != null ? e.waist : ""; $("sleep").value = e && e.sleep != null ? e.sleep : "";
-    $("steps").value = e && e.steps != null ? e.steps : ""; $("note").value = e && e.note ? e.note : "";
-    $("more").open = !!(e && (e.waist != null || e.sleep != null || e.steps != null || e.note));
+    $("note").value = e && e.note ? e.note : "";
+    $("more").open = !!(e && (e.waist != null || e.sleep != null || e.note));
     $("entryTitle").textContent = e ? "עריכת שקילה" : "שקילה חדשה"; $("saveBtn").textContent = e ? "לעדכן" : "לשמור";
     $("entryMsg").textContent = "";
     openDlg($("entrySheet"));
@@ -740,7 +806,7 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     if (!d){ $("entryMsg").textContent = "צריך לבחור תאריך."; return; }
     if (!(w >= 20 && w <= 350)){ $("entryMsg").textContent = "המשקל צריך להיות בין 20 ל־350 ק״ג."; $("w").focus(); return; }
     var replaced = d in state.entries;
-    state.entries[d] = normEntry({ w:w, waist:$("waist").value, sleep:$("sleep").value, steps:$("steps").value, note:$("note").value });
+    state.entries[d] = normEntry({ w:w, waist:$("waist").value, sleep:$("sleep").value, steps:replaced ? state.entries[d].steps : null, note:$("note").value });
     persist(); render(); $("entrySheet").close();
     toast(replaced ? "השקילה עודכנה" : "השקילה נשמרה ✓");
   });
@@ -782,15 +848,17 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
   }
   function parseBackup(lines){
     var head = csvCells(lines[0].replace(/^\ufeff/, "").toLowerCase()), ix = function(n){ return head.indexOf(n); };
-    var rows = [], bad = 0, today = iso(new Date());
+    var rows = [], stepRows = [], bad = 0, today = iso(new Date());
     lines.slice(1).forEach(function(line){
       if (!line.trim()) return;
       var c = csvCells(line), d = c[ix("date")];
       var r = { date:d, w:c[ix("weight_kg")], waist:ix("waist_cm") >= 0 ? c[ix("waist_cm")] : "", sleep:ix("sleep_h") >= 0 ? c[ix("sleep_h")] : "", steps:ix("steps") >= 0 ? c[ix("steps")] : "", note:ix("note") >= 0 ? c[ix("note")] : "" };
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "") || d > today || !normEntry(r)){ bad++; return; }
+      var okDate = /^\d{4}-\d{2}-\d{2}$/.test(d || "") && d <= today;
+      if (okDate && r.w === "" && num(r.steps, 0, 100000) != null){ stepRows.push({ date:d, steps:Math.round(Number(r.steps)) }); return; }
+      if (!okDate || !normEntry(r)){ bad++; return; }
       rows.push(r);
     });
-    return { rows: rows, bad: bad };
+    return { rows: rows, stepRows: stepRows, bad: bad };
   }
   function parseImport(text){
     var lines0 = text.split(/\r?\n/);
@@ -816,12 +884,13 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     return { rows: Object.keys(map).sort().map(function(k){ return { date:k, w:map[k] }; }), bad: bad };
   }
   function previewImport(){
-    var r = parseImport($("impText").value); importRows = r.rows;
+    var r = parseImport($("impText").value); importRows = r.rows; importSteps = r.stepRows || [];
     var clash = r.rows.filter(function(x){ return x.date in state.entries; }).length, s = "";
     if (r.rows.length){ s = "נמצאו " + r.rows.length + " שקילות, מ־" + dFmt.format(parse(r.rows[0].date)) + " עד " + dFmt.format(parse(r.rows[r.rows.length-1].date)) + "."; if (clash) s += " " + clash + " מהן בתאריכים שכבר קיימים."; }
     else if ($("impText").value.trim()) s = "לא זוהו שורות עם תאריך ומשקל.";
+    if (importSteps.length) s += " " + importSteps.length + " ימי צעדים.";
     if (r.bad) s += " " + r.bad + " שורות לא זוהו וידולגו.";
-    $("impStatus").textContent = s; $("impGo").disabled = !r.rows.length;
+    $("impStatus").textContent = s; $("impGo").disabled = !(r.rows.length || importSteps.length);
   }
   $("openImport").addEventListener("click", function(){ $("impText").value = ""; $("impFile").value = ""; previewImport(); openDlg($("importDlg")); });
   $("impText").addEventListener("input", previewImport);
@@ -837,6 +906,7 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
       if (r.date in state.entries){ if (ow){ var m = Object.assign({}, state.entries[r.date]); Object.keys(r).forEach(function(k){ if (k !== "date" && r[k] !== "" && r[k] != null) m[k] = r[k]; }); state.entries[r.date] = normEntry(m) || state.entries[r.date]; upd++; } }
       else { var n = normEntry(r); if (n){ state.entries[r.date] = n; added++; } }
     });
+    importSteps.forEach(function(r){ state.dailySteps[r.date] = r.steps; });
     persist(); render();
     $("impStatus").textContent = "יובאו " + added + " שקילות חדשות" + (upd ? " ו־" + upd + " עודכנו." : ".");
     $("impGo").disabled = true;
@@ -869,7 +939,8 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
 
   /* export */
   $("exportBtn").addEventListener("click", function(){
-    var rows = ["date,weight_kg,waist_cm,sleep_h,steps,note"].concat(list().map(function(e){
+    var sm = stepsMap(), only = Object.keys(sm).filter(function(k){ return !(k in state.entries); }).sort().map(function(k){ return [k, "", "", "", sm[k], ""].join(","); });
+    var rows = ["date,weight_kg,waist_cm,sleep_h,steps,note"].concat(only, list().map(function(e){
       return [e.date, e.w, e.waist != null ? e.waist : "", e.sleep != null ? e.sleep : "", e.steps != null ? e.steps : "", e.note ? '"' + e.note.replace(/"/g,'""') + '"' : ""].join(",");
     }));
     var csv = "\ufeff" + rows.join("\n"), name = "weight-" + iso(new Date()) + ".csv";
