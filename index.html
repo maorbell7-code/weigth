@@ -239,7 +239,8 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
       <button class="btn soft" id="openSummary">סיכום שבועי</button>
     </div>
     <button class="btn soft small" id="syncSteps" style="inline-size:100%;margin-block:-8px 6px">סנכרון צעדים מהאייפון</button>
-    <p class="vsub" id="stepsLine" style="text-align:center;margin:0 0 18px"></p>
+    <p class="vsub" id="stepsLine" style="text-align:center;margin:0 0 6px"></p>
+    <p style="text-align:center;margin:0 0 18px"><button type="button" id="pasteSteps" style="border:0;background:none;color:var(--violet);font-weight:600;font-size:14px;min-block-size:44px;padding:0 12px">הדבקה ידנית של צעדים</button></p>
     <div class="tiles" id="tiles"></div>
     <div class="row-between"><h2 style="margin:0 0 10px;font-size:18px">תובנות</h2><a href="#reports" style="color:var(--violet);font-weight:600;font-size:14px;text-decoration:none">לכל הדוחות</a></div>
     <ul class="ins" id="insHome"></ul>
@@ -759,6 +760,7 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
   function openSteps(){ $("stText").value = ""; previewSteps(); openDlg($("stepsDlg")); }
   $("stText").addEventListener("input", previewSteps);
   $("stGo").addEventListener("click", function(){ var r = previewSteps(); if (r.n){ applySteps(r.map); $("stepsDlg").close(); stepsToast(r.map); } });
+  $("pasteSteps").addEventListener("click", function(){ openSteps(); setTimeout(function(){ $("stText").focus(); }, 80); });
   $("syncSteps").addEventListener("click", function(){
     if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(function(t){
       var r = parseSteps(t);
