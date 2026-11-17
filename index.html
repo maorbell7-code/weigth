@@ -238,7 +238,8 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
       <button class="btn grow" data-open-entry>לשקול עכשיו</button>
       <button class="btn soft" id="openSummary">סיכום שבועי</button>
     </div>
-    <button class="btn soft small" id="syncSteps" style="inline-size:100%;margin-block:-8px 18px">סנכרון צעדים מהאייפון</button>
+    <button class="btn soft small" id="syncSteps" style="inline-size:100%;margin-block:-8px 6px">סנכרון צעדים מהאייפון</button>
+    <p class="vsub" id="stepsLine" style="text-align:center;margin:0 0 18px"></p>
     <div class="tiles" id="tiles"></div>
     <div class="row-between"><h2 style="margin:0 0 10px;font-size:18px">תובנות</h2><a href="#reports" style="color:var(--violet);font-weight:600;font-size:14px;text-decoration:none">לכל הדוחות</a></div>
     <ul class="ins" id="insHome"></ul>
@@ -572,6 +573,9 @@ textarea.code{min-block-size:160px;direction:ltr;text-align:start;font-family:ui
     $("height").value = state.height != null ? state.height : "";
     $("sleepGoal").value = state.sleepGoal != null ? state.sleepGoal : "";
     renderHero(arr);
+    var sl = stepList(), sEl = $("stepsLine");
+    if (sl.length){ var ls = sl[sl.length-1]; sEl.innerHTML = "צעדים " + (iso(ls.d) === iso(new Date()) ? "היום" : "ב־" + dShort.format(ls.d)) + ": " + bdi(n0.format(ls.steps)) + " · " + bdi(String(sl.length)) + " ימים שמורים"; }
+    else sEl.textContent = "עוד אין צעדים שמורים.";
 
     var t = [];
     if (arr.length){
