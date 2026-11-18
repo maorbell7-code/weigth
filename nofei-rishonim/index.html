@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>נופי הראשונים – מרכז פגישה</title>
+<style>
+:root{--bg:#faf6e8;--card:#fff;--ink:#2b2118;--mut:#7a6e5f;--brand:#5b3f2b;--green:#7c8a4a;--line:#e6dfc9;--red:#b3402f;--amber:#c98a1b}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--brand);color:#fff;padding:14px 16px}
+header h1{margin:0;font-size:20px}header small{opacity:.8}
+nav{display:flex;gap:4px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;padding:0 8px}
+nav button{border:0;background:none;padding:12px 12px;font-size:15px;cursor:pointer;white-space:nowrap;color:var(--mut);border-bottom:3px solid transparent}
+nav button.on{color:var(--brand);border-color:var(--green);font-weight:700}
+main{max-width:1100px;margin:0 auto;padding:14px}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpi b{display:block;font-size:22px;color:var(--brand)}.kpi span{color:var(--mut);font-size:13px}
+h2{font-size:18px;margin:6px 0 10px}h3{font-size:15px;margin:10px 0 6px}
+ul{margin:4px 0;padding-inline-start:20px}
+.warn{border-inline-start:5px solid var(--red)}.ok{border-inline-start:5px solid var(--green)}.q{border-inline-start:5px solid var(--amber)}
+img.hero{width:100%;border-radius:12px;max-height:340px;object-fit:cover}
+table{width:100%;border-collapse:collapse;font-size:14px;background:#fff}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{background:#f3edd8;cursor:pointer;position:sticky;top:0}
+tr.sold td{color:#aaa;text-decoration:line-through}
+tr.apt{cursor:pointer}tr.apt:hover td{background:#fbf8ec}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:70vh}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.filters select,.filters input{padding:8px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;background:#eee;margin-inline-start:4px}
+.tag.s{background:#f5d6d0;color:var(--red)}.tag.m{background:#e3e9c8}.tag.x{background:#fbe7bd}
+.cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.cards .card{padding:0;overflow:hidden;cursor:pointer}.cards img{width:100%;height:170px;object-fit:cover;object-position:top;background:#eee}
+.cards .in{padding:10px 12px}
+.chat{display:flex;flex-direction:column;height:62vh}
+.msgs{flex:1;overflow:auto;padding:6px}
+.m{max-width:88%;padding:9px 12px;border-radius:12px;margin:6px 0;white-space:pre-wrap}
+.m.u{background:var(--brand);color:#fff;margin-inline-start:auto;border-end-end-radius:2px}
+.m.b{background:#fff;border:1px solid var(--line);border-end-start-radius:2px}
+.ask{display:flex;gap:6px}.ask input{flex:1;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px}
+.btn{background:var(--green);color:#fff;border:0;border-radius:10px;padding:0 18px;font-size:15px;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.chips button{background:#fff;border:1px solid var(--line);border-radius:99px;padding:5px 11px;cursor:pointer;font-size:13px}
+dialog{border:0;border-radius:14px;padding:0;max-width:96vw;width:900px}dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog img{width:100%;display:block}.dh{padding:12px 16px}.dh button{float:left}
+.bar{height:10px;background:#eee;border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--green)}
+</style>
+</head>
+<body>
+<header><h1>נופי הראשונים – ערד</h1><small>מגרש 109 · 2 בניינים · 42 דירות · מרכז הכנה לפגישה</small></header>
+<nav id="nav"></nav>
+<main>
+
+<section id="t-sum" class="on"></section>
+
+<section id="t-ask">
+  <div class="card chat">
+    <div class="msgs" id="msgs"></div>
+    <div class="chips" id="chips"></div>
+    <form class="ask" id="f"><input id="qi" placeholder="שאל: כמה עולה דירת 4 חדרים? מה הכי זול? מה עם חניה?" autocomplete="off"><button class="btn">שלח</button></form>
+  </div>
+  <small style="color:var(--mut)">התשובות מבוססות רק על המסמכים שהועלו (מחירון, מפרט, חוברות, גיליון מגרשים, חומר שיווקי). לא מחובר לאינטרנט.</small>
+</section>
+
+<section id="t-price">
+  <div class="filters">
+    <select id="fType"><option value="">כל הסוגים</option></select>
+    <select id="fRooms"><option value="">כל החדרים</option><option>3</option><option>4</option><option>5</option></select>
+    <select id="fFloor"><option value="">כל הקומות</option><option>קרקע</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <select id="fCol"><option value="post">מחיר אחרי ישיבה 19.10</option><option value="pre">מחיר פרה-סייל</option><option value="list">מחיר שיווק (מחירון)</option></select>
+    <input id="fMax" type="number" placeholder="תקציב מקסימום ₪" step="10000">
+    <label><input type="checkbox" id="fSold"> הצג גם נמכרו</label>
+  </div>
+  <div class="wrap"><table id="tbl"></table></div>
+  <div id="totals" class="card" style="margin-top:10px"></div>
+</section>
+
+<section id="t-props"><div class="cards" id="cards"></div></section>
+<section id="t-spec"></section>
+<section id="t-mkt"></section>
+
+</main>
+<dialog id="dlg"><div class="dh"><button class="btn" style="padding:6px 14px" onclick="dlg.close()">סגור ✕</button><b id="dt"></b></div><div id="db"></div></dialog>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
